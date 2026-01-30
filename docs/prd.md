@@ -6,7 +6,7 @@
 Marketing Tracking Dashboard
 
 ### 1.2 Application Description
-A comprehensive dashboard system for tracking marketing leads from multiple sources (website forms, Facebook, LinkedIn, SEO), managing SEO meta tags, and enabling sales team follow-up with lead status tracking. The system includes role-based access control with Admin, Sales, SEO, and Client user roles, along with internal user-to-user chat capabilities for team communication. The application features an attractive, responsive UI/UX design with theme customization, collapsible sidebar menu, and includes subscription plan options for client users.
+A comprehensive dashboard system for tracking marketing leads from multiple sources (website forms, Facebook, LinkedIn, SEO), managing SEO meta tags, blog content management, and enabling sales team follow-up with lead status tracking. The system includes role-based access control with Admin, Sales, SEO, and Client user roles, along with internal user-to-user chat capabilities for team communication. The application features an attractive, responsive UI/UX design with theme customization, collapsible sidebar menu, and includes subscription plan options for client users.
 
 ## 2. Core Features
 
@@ -24,6 +24,7 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - **Follow-up system** integrated within leads for tracking follow-up activities
 - **Table pagination** with filters for status, date, source, and search functionality
 - **LinkedIn and Facebook integration** for lead capture
+- **Lead visibility control**: Only Admin can view all leads; other users can only view leads assigned to them
 
 ### 2.2 SEO Meta Tag Management
 - Create, update, and delete SEO meta tags for website pages
@@ -31,42 +32,53 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - Apply meta tags to site pages
 - **Table pagination** with filter and search functionality
 
-### 2.3 Dashboard Visualization
-- Display all leads with their current status
+### 2.3 Blog Management
+- Create new blog posts with the following fields:
+  - Blog title
+  - Blog description/content
+  - Feature image
+  - Category
+  - Tags
+- Update existing blog posts
+- **Table pagination** with filter and search functionality for blog management
+
+### 2.4 Dashboard Visualization
+- Display all leads with their current status (Admin view: all leads; other users: assigned leads only)
 - Show lead distribution by source (Facebook, LinkedIn, form submissions, SEO)
 - View assigned leads by user (sales and SEO team members)
 - Track lead status changes with date and time stamps
 - Overview of pending, completed, and remainder leads
 
-### 2.4 User Role Management
-- **Admin Role**: Full access to all dashboard features and activities, including user management and permission configuration
-- **Sales Role**: Access to assigned leads with configurable read/write permissions set by Admin
-- **SEO Role**: Access to SEO meta tag management and assigned leads with configurable read/write permissions set by Admin
-- **Client Role**: Paid access with configurable read/write permissions set by Admin, subscription-based access with monthly, quarterly, and annual plans
-- **Create users** based on role selection
+### 2.5 User Role Management
+- **Admin Role**: Full access to all dashboard features and activities, including user management and permission configuration; can view all leads
+- **Sales Role**: Access to assigned leads only with configurable read/write permissions set by Admin
+- **SEO Role**: Access to SEO meta tag management and assigned leads only with configurable read/write permissions set by Admin
+- **Client Role**: Paid access with configurable read/write permissions set by Admin, subscription-based access with monthly, quarterly, and annual plans; can only view assigned leads
+- **Create users** based on role selection (Sales, SEO, Client)
 - **Update user** information and permissions
 - **User profile view and update** features for all users
 - **Table pagination** with filter and search functionality for user management
 - **Client subscription plans system** with three pricing tiers: Monthly, Quarterly, Annual
 
-### 2.5 Permission Control System
+### 2.6 Permission Control System
 - Admin can configure read and write access for Sales, SEO, and Client roles
 - Granular permission settings for different dashboard features and activities
 - Activity logging for all actions performed in the dashboard
+- Lead visibility restrictions based on user role and assignment
 
-### 2.6 Communication System
+### 2.7 Communication System
 - Note-taking functionality for each assigned lead
 - **Internal user-to-user chat system** for team communication
 - Conversation history tracking with timestamps
 - Ability to view all notes related to a specific lead
 
-### 2.7 Client Subscription Management
+### 2.8 Client Subscription Management
 - Display subscription plan options for client users: Monthly, Quarterly, and Annual
 - Show pricing and features for each subscription tier
 - Subscription plan selection interface for client users
 - Subscription status tracking and management
 
-### 2.8 UI/UX Design Requirements
+### 2.9 UI/UX Design Requirements
 - **Significantly improved UI/UX** with attractive and modern design
 - **Responsive design** supporting desktop, tablet, and mobile devices
 - **Animations** and smooth transitions for enhanced user experience
@@ -77,10 +89,11 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - **Collapsible sidebar menu** with logo display
 - Full responsive layout across all screen sizes
 
-### 2.9 Dummy Data
+### 2.10 Dummy Data
 - Pre-populated with sample data for all user roles (Admin, Sales, SEO, Client)
 - Sample leads from various sources with different statuses
 - Example SEO meta tags
+- Sample blog posts with titles, descriptions, feature images, categories, and tags
 - Sample notes and follow-up records
 - Demo activity logs
 - Sample user-to-user chat conversations
@@ -117,7 +130,17 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - Description
 - Creation/update timestamp
 
-### 4.3 User Information
+### 4.3 Blog Posts
+- Blog ID
+- Title
+- Description/Content
+- Feature image
+- Category
+- Tags
+- Creation/update timestamp
+- Author user ID
+
+### 4.4 User Information
 - User ID
 - Username
 - Role (Admin, Sales, SEO, Client)
@@ -127,14 +150,14 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - User profile information
 - Theme preferences
 
-### 4.4 Activity Log
+### 4.5 Activity Log
 - Activity ID
 - User ID
 - Action performed
 - Timestamp
 - Affected resource/data
 
-### 4.5 Notes
+### 4.6 Notes
 - Note ID
 - Lead ID
 - User ID (author)
@@ -142,7 +165,7 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - Timestamp
 - Note type (general note, pending reason, remainder reason)
 
-### 4.6 User-to-User Chat Messages
+### 4.7 User-to-User Chat Messages
 - Message ID
 - Sender User ID
 - Receiver User ID
@@ -150,14 +173,14 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - Timestamp
 - Read status
 
-### 4.7 Subscription Plans
+### 4.8 Subscription Plans
 - Plan ID
 - Plan name (Monthly, Quarterly, Annual)
 - Pricing
 - Features included
 - Duration
 
-### 4.8 Follow-up System Data
+### 4.9 Follow-up System Data
 - Follow-up ID
 - Lead ID
 - Assigned User ID
@@ -165,7 +188,7 @@ A comprehensive dashboard system for tracking marketing leads from multiple sour
 - Follow-up status
 - Follow-up notes
 
-### 4.9 Lead Import/Export Data
+### 4.10 Lead Import/Export Data
 - Import/export format specifications
 - Field mapping configurations
 - Bulk operation logs

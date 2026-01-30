@@ -709,3 +709,210 @@ export const notificationsApi = {
     if (error) throw error;
   },
 };
+
+// Blogs API
+export const blogsApi = {
+  getAll: async () => {
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*, author:profiles(id, username)')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  getPublished: async () => {
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*, author:profiles(id, username)')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false });
+    
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  getById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('blogs')
+      .select('*, author:profiles(id, username)')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  create: async (blog: {
+    title: string;
+    description: string;
+    content?: string;
+    feature_image?: string;
+    category: string;
+    tags?: string[];
+    status?: string;
+  }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('blogs')
+      .insert({
+        ...blog,
+        author_id: user.id,
+        published_at: blog.status === 'published' ? new Date().toISOString() : null,
+      })
+      .select()
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id: string, updates: {
+    title?: string;
+    description?: string;
+    content?: string;
+    feature_image?: string;
+    category?: string;
+    tags?: string[];
+    status?: string;
+  }) => {
+    const updateData: Record<string, unknown> = { ...updates };
+    
+    // If publishing for the first time, set published_at
+    if (updates.status === 'published') {
+      const { data: blog } = await supabase
+        .from('blogs')
+        .select('published_at')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (blog && !blog.published_at) {
+        updateData.published_at = new Date().toISOString();
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('blogs')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  delete: async (id: string) => {
+    const { error } = await supabase
+      .from('blogs')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  uploadImage: async (file: File): Promise<string> => {
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File must be an image');
+    }
+
+    // Check file size (1MB limit)
+    const maxSize = 1 * 1024 * 1024; // 1MB
+    let fileToUpload = file;
+
+    if (file.size > maxSize) {
+      // Compress image
+      fileToUpload = await compressImage(file);
+    }
+
+    // Generate unique filename
+    const fileExt = fileToUpload.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('blog_images')
+      .upload(filePath, fileToUpload);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('blog_images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  },
+
+  deleteImage: async (imageUrl: string) => {
+    const path = imageUrl.split('/blog_images/').pop();
+    if (!path) return;
+
+    const { error } = await supabase.storage
+      .from('blog_images')
+      .remove([path]);
+
+    if (error) throw error;
+  },
+};
+
+// Image compression helper
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize to max 1080p
+        const maxDimension = 1080;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = (height / width) * maxDimension;
+            width = maxDimension;
+          } else {
+            width = (width / height) * maxDimension;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to compress image'));
+              return;
+            }
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/webp',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          'image/webp',
+          0.8
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+  });
+}

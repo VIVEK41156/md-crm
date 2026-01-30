@@ -20,6 +20,7 @@ import {
   Search,
   Settings,
   Shield,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'sales', 'seo', 'client'] },
   { name: 'Leads', href: '/leads', icon: Users, roles: ['admin', 'sales', 'seo', 'client'] },
   { name: 'SEO Meta Tags', href: '/seo', icon: Search, roles: ['admin', 'seo'] },
+  { name: 'Blogs', href: '/blogs', icon: BookOpen, roles: ['admin', 'sales', 'seo'] },
   { name: 'Subscription', href: '/subscription', icon: FileText, roles: ['client'] },
   { name: 'User Management', href: '/users', icon: Settings, roles: ['admin'] },
   { name: 'Permissions', href: '/permissions', icon: Shield, roles: ['admin'] },

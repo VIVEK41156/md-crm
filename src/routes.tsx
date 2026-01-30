@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import LeadsPageEnhanced from './pages/LeadsPageEnhanced';
 import LeadDetailPage from './pages/LeadDetailPage';
 import SeoPage from './pages/SeoPage';
+import BlogsPage from './pages/BlogsPage';
 import UsersPage from './pages/UsersPage';
 import UserProfilePage from './pages/UserProfilePage';
 import ProfilePage from './pages/ProfilePage';
@@ -40,6 +41,11 @@ const routes: RouteConfig[] = [
     name: 'SEO Meta Tags',
     path: '/seo',
     element: <SeoPage />
+  },
+  {
+    name: 'Blogs',
+    path: '/blogs',
+    element: <BlogsPage />
   },
   {
     name: 'User Management',
