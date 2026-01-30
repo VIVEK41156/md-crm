@@ -43,8 +43,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { DataPagination } from '@/components/common/DataPagination';
-import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/db/supabase';
+import { notificationHelper } from '@/lib/notificationHelper';
 
 type UserRole = 'admin' | 'sales' | 'seo' | 'client';
 
@@ -55,6 +57,9 @@ type Profile = {
   phone: string | null;
   role: UserRole;
   is_client_paid: boolean;
+  subscription_plan: string | null;
+  subscription_start: string | null;
+  subscription_end: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -69,13 +74,25 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
 
   const [showDialog, setShowDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     phone: '',
+    password: '',
     role: 'sales' as UserRole,
     is_client_paid: false,
+    subscription_plan: '',
+    subscription_start: '',
+    subscription_end: '',
+  });
+
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    username: '',
+    password: '',
+    role: 'sales' as UserRole,
   });
 
   const { profile, hasPermission } = useAuth();
@@ -121,6 +138,98 @@ export default function UsersPage() {
     }
   };
 
+  const handleInviteUser = async () => {
+    if (!hasPermission('users', 'write')) {
+      toast({
+        title: 'Permission Denied',
+        description: 'You do not have permission to invite users',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!inviteData.email || !inviteData.username || !inviteData.password) {
+      toast({
+        title: 'Validation Error',
+        description: 'Email, username, and password are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Create user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: inviteData.email,
+        password: inviteData.password,
+        options: {
+          data: {
+            username: inviteData.username,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Update the profile with the role
+        await profilesApi.update(authData.user.id, {
+          role: inviteData.role,
+        });
+
+        // Notify the new user
+        await notificationHelper.notifyUser(
+          authData.user.id,
+          'Welcome!',
+          `Your account has been created with ${inviteData.role} role.`,
+          'success',
+          'user_created'
+        );
+
+        // Notify admins
+        await notificationHelper.notifyAdmins(
+          'New User Created',
+          `${inviteData.username} has been added as ${inviteData.role}.`,
+          'info',
+          'user_created',
+          'user',
+          authData.user.id
+        );
+
+        if (profile) {
+          await activityLogsApi.create({
+            user_id: profile.id as string,
+            action: 'create_user',
+            resource_type: 'user',
+            resource_id: authData.user.id,
+            details: { username: inviteData.username, role: inviteData.role },
+          });
+        }
+
+        toast({
+          title: 'Success',
+          description: 'User invited successfully',
+        });
+
+        setShowInviteDialog(false);
+        setInviteData({
+          email: '',
+          username: '',
+          password: '',
+          role: 'sales',
+        });
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('Failed to invite user:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to invite user',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleSaveUser = async () => {
     if (!hasPermission('users', 'write')) {
       toast({
@@ -149,7 +258,29 @@ export default function UsersPage() {
           phone: formData.phone || null,
           role: formData.role,
           is_client_paid: formData.is_client_paid,
+          subscription_plan: formData.subscription_plan || null,
+          subscription_start: formData.subscription_start || null,
+          subscription_end: formData.subscription_end || null,
         });
+
+        // Notify the user
+        await notificationHelper.notifyUser(
+          editingUser.id,
+          'Profile Updated',
+          'Your profile has been updated by an administrator.',
+          'info',
+          'user_updated'
+        );
+
+        // Notify admins
+        await notificationHelper.notifyAdmins(
+          'User Updated',
+          `${formData.username}'s profile has been updated.`,
+          'info',
+          'user_updated',
+          'user',
+          editingUser.id
+        );
 
         if (profile) {
           await activityLogsApi.create({
@@ -165,15 +296,6 @@ export default function UsersPage() {
           title: 'Success',
           description: 'User updated successfully',
         });
-      } else {
-        // Note: Creating new users requires them to register first
-        toast({
-          title: 'Info',
-          description: 'Users must register through the signup page. You can then update their role here.',
-          variant: 'default',
-        });
-        setShowDialog(false);
-        return;
       }
 
       setShowDialog(false);
@@ -182,8 +304,12 @@ export default function UsersPage() {
         username: '',
         email: '',
         phone: '',
+        password: '',
         role: 'sales',
         is_client_paid: false,
+        subscription_plan: '',
+        subscription_start: '',
+        subscription_end: '',
       });
       loadUsers();
     } catch (error) {
@@ -208,6 +334,16 @@ export default function UsersPage() {
 
     try {
       await profilesApi.delete(userId);
+
+      // Notify admins
+      await notificationHelper.notifyAdmins(
+        'User Deleted',
+        `${username} has been removed from the system.`,
+        'warning',
+        'user_deleted',
+        'user',
+        userId
+      );
 
       if (profile) {
         await activityLogsApi.create({
@@ -241,20 +377,12 @@ export default function UsersPage() {
       username: user.username,
       email: user.email || '',
       phone: user.phone || '',
+      password: '',
       role: user.role,
       is_client_paid: user.is_client_paid,
-    });
-    setShowDialog(true);
-  };
-
-  const openNewDialog = () => {
-    setEditingUser(null);
-    setFormData({
-      username: '',
-      email: '',
-      phone: '',
-      role: 'sales',
-      is_client_paid: false,
+      subscription_plan: user.subscription_plan || '',
+      subscription_start: user.subscription_start || '',
+      subscription_end: user.subscription_end || '',
     });
     setShowDialog(true);
   };
@@ -277,9 +405,9 @@ export default function UsersPage() {
           <p className="text-muted-foreground">Manage system users and their roles</p>
         </div>
         {hasPermission('users', 'write') && (
-          <Button onClick={openNewDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
+          <Button onClick={() => setShowInviteDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Invite User
           </Button>
         )}
       </div>
@@ -338,7 +466,7 @@ export default function UsersPage() {
                       <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead className="hidden lg:table-cell">Phone</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead className="hidden xl:table-cell">Client Paid</TableHead>
+                      <TableHead className="hidden xl:table-cell">Subscription</TableHead>
                       <TableHead className="hidden xl:table-cell">Created</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -358,10 +486,21 @@ export default function UsersPage() {
                           <TableCell className="hidden lg:table-cell">{user.phone || '-'}</TableCell>
                           <TableCell>{getRoleBadge(user.role)}</TableCell>
                           <TableCell className="hidden xl:table-cell">
-                            {user.is_client_paid ? (
-                              <Badge variant="default">Yes</Badge>
+                            {user.role === 'client' ? (
+                              <div className="flex flex-col gap-1">
+                                {user.is_client_paid ? (
+                                  <Badge variant="default">Active</Badge>
+                                ) : (
+                                  <Badge variant="secondary">Inactive</Badge>
+                                )}
+                                {user.subscription_plan && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {user.subscription_plan}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
-                              <Badge variant="secondary">No</Badge>
+                              '-'
                             )}
                           </TableCell>
                           <TableCell className="hidden xl:table-cell">
@@ -437,52 +576,50 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* User Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      {/* Invite User Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
+            <DialogTitle>Invite New User</DialogTitle>
             <DialogDescription>
-              {editingUser
-                ? 'Update user information and role'
-                : 'Users must register first. You can update their role after registration.'}
+              Create a new user account with email and password
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="username">Username *</Label>
+              <Label htmlFor="invite_email">Email *</Label>
               <Input
-                id="username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                placeholder="johndoe"
-                disabled={!editingUser}
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+                id="invite_email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@example.com"
+                value={inviteData.email}
+                onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                placeholder="user@example.com"
               />
             </div>
             <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="invite_username">Username *</Label>
               <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+1-555-0123"
+                id="invite_username"
+                value={inviteData.username}
+                onChange={(e) => setInviteData({ ...inviteData, username: e.target.value })}
+                placeholder="johndoe"
               />
             </div>
             <div>
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="invite_password">Password *</Label>
+              <Input
+                id="invite_password"
+                type="password"
+                value={inviteData.password}
+                onChange={(e) => setInviteData({ ...inviteData, password: e.target.value })}
+                placeholder="••••••••"
+              />
+            </div>
+            <div>
+              <Label htmlFor="invite_role">Role</Label>
               <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
+                value={inviteData.role}
+                onValueChange={(value) => setInviteData({ ...inviteData, role: value as UserRole })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -495,26 +632,140 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            {formData.role === 'client' && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_client_paid"
-                  checked={formData.is_client_paid}
-                  onChange={(e) => setFormData({ ...formData, is_client_paid: e.target.checked })}
-                  className="rounded"
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleInviteUser}>Invite User</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information and role
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="username">Username *</Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  placeholder="johndoe"
                 />
-                <Label htmlFor="is_client_paid">Client has paid subscription</Label>
               </div>
+              <div>
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="sales">Sales</SelectItem>
+                    <SelectItem value="seo">SEO</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+1-555-0123"
+                />
+              </div>
+            </div>
+
+            {formData.role === 'client' && (
+              <>
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3">Subscription Details</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="is_client_paid"
+                        checked={formData.is_client_paid}
+                        onChange={(e) => setFormData({ ...formData, is_client_paid: e.target.checked })}
+                        className="rounded"
+                      />
+                      <Label htmlFor="is_client_paid">Active Subscription</Label>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="subscription_plan">Subscription Plan</Label>
+                      <Select
+                        value={formData.subscription_plan}
+                        onValueChange={(value) => setFormData({ ...formData, subscription_plan: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic">Basic - $29/month</SelectItem>
+                          <SelectItem value="professional">Professional - $79/month</SelectItem>
+                          <SelectItem value="enterprise">Enterprise - $199/month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="subscription_start">Start Date</Label>
+                        <Input
+                          id="subscription_start"
+                          type="date"
+                          value={formData.subscription_start}
+                          onChange={(e) => setFormData({ ...formData, subscription_start: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="subscription_end">End Date</Label>
+                        <Input
+                          id="subscription_end"
+                          type="date"
+                          value={formData.subscription_end}
+                          onChange={(e) => setFormData({ ...formData, subscription_end: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveUser}>
-              {editingUser ? 'Update' : 'Add'} User
-            </Button>
+            <Button onClick={handleSaveUser}>Update User</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -11,6 +11,9 @@ export type Profile = {
   phone: string | null;
   role: UserRole;
   is_client_paid: boolean;
+  subscription_plan: string | null;
+  subscription_start: string | null;
+  subscription_end: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -615,5 +618,94 @@ export const chatApi = {
         callback
       )
       .subscribe();
+  },
+};
+
+// Notifications API
+export const notificationsApi = {
+  create: async (notification: {
+    user_id: string;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+    action_type: string;
+    resource_type?: string;
+    resource_id?: string;
+  }) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notification)
+      .select()
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  notifyAllAdmins: async (notification: {
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning';
+    action_type: string;
+    resource_type?: string;
+    resource_id?: string;
+  }) => {
+    const { data: admins, error: adminError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin');
+
+    if (adminError) throw adminError;
+
+    const notifications = admins.map(admin => ({
+      user_id: admin.id,
+      ...notification,
+    }));
+
+    const { error } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (error) throw error;
+  },
+
+  getAll: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  markAsRead: async (notificationId: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId);
+
+    if (error) throw error;
+  },
+
+  markAllAsRead: async (userId: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw error;
+  },
+
+  delete: async (notificationId: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId);
+
+    if (error) throw error;
   },
 };

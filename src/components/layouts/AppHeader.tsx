@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { NotificationCenter } from '@/components/common/NotificationCenter';
 
 type Profile = {
   id: string;
@@ -62,7 +63,9 @@ export function AppHeader() {
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <NotificationCenter />
+          
           {profile && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
