@@ -1,29 +1,138 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { wpLeadsApi } from '@/db/wpLeadsApi';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, CheckCircle, Clock, AlertCircle, TrendingUp, Activity, ArrowUpRight } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Legend, Cell
+} from 'recharts';
+import {
+  Users, CheckCircle, Clock, AlertCircle,
+  TrendingUp, Activity, Settings
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
-import { CardContainer, CardBody, CardItem } from '@/components/ui/3d-card';
-import { cn } from '@/lib/utils';
 
-const COLORS = ['#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+/* ─── Brand Colors ─── */
+const BRAND = {
+  primary: '#1F86E0',
+  dark: '#2C313A',
+  white: '#FFFFFF',
+  // Dark theme palette derived from brand
+  bg: '#1A1D2E',
+  cardBg: '#222639',
+  cardBorder: '#2E3348',
+  textMuted: '#8B8FA3',
+  accent: '#1F86E0',
+  accentCyan: '#2DD4BF',
+};
 
-const container = {
+const PIPELINE_COLORS = ['#1F86E0', '#2DD4BF', '#0F4880', '#60A5FA'];
+
+/* ─── Framer Motion Variants ─── */
+const containerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
+    transition: { staggerChildren: 0.12, delayChildren: 0.1 }
   }
 };
 
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
+const itemVariants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1, y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }
+  }
 };
 
+/* ─── Custom Tooltip ─── */
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: BRAND.cardBg,
+        border: `1px solid ${BRAND.cardBorder}`,
+        borderRadius: '12px',
+        padding: '12px 16px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+      }}>
+        <p style={{ color: BRAND.white, fontWeight: 600, marginBottom: 4 }}>{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} style={{ color: entry.color || BRAND.accentCyan, fontSize: 13 }}>
+            {entry.name}: <strong>{entry.value}</strong>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+/* ─── Stat Card Component ─── */
+const StatCard = ({ title, value, icon: Icon, accentColor, subtitle, trend, index }: any) => (
+  <motion.div
+    variants={itemVariants}
+    whileHover={{
+      scale: 1.03,
+      y: -4,
+      transition: { duration: 0.2 }
+    }}
+    className="relative group cursor-pointer"
+  >
+    <div
+      className="rounded-2xl p-5 md:p-6 transition-all duration-300 overflow-hidden"
+      style={{
+        background: BRAND.cardBg,
+        border: `1px solid ${BRAND.cardBorder}`,
+      }}
+    >
+      {/* Accent top border glow */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-70 group-hover:opacity-100 transition-opacity"
+        style={{ background: `linear-gradient(90deg, ${accentColor}, transparent)` }}
+      />
+
+      {/* Header row: icon + title + trend */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="p-2.5 rounded-xl transition-all duration-300 group-hover:scale-110"
+            style={{ background: `${accentColor}20`, border: `1px solid ${accentColor}30` }}
+          >
+            <Icon className="h-5 w-5" style={{ color: accentColor }} />
+          </div>
+          <span style={{ color: BRAND.textMuted }} className="text-sm font-medium">{title}</span>
+        </div>
+        {trend && (
+          <span
+            className="text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1"
+            style={{
+              color: accentColor,
+              background: `${accentColor}15`,
+            }}
+          >
+            <TrendingUp className="w-3 h-3" />
+            {trend}
+          </span>
+        )}
+      </div>
+
+      {/* Value */}
+      <div className="mt-2">
+        <span className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: BRAND.white }}>
+          {value}
+        </span>
+        <p className="text-xs mt-1.5" style={{ color: BRAND.textMuted }}>{subtitle}</p>
+      </div>
+
+      {/* Background decoration */}
+      <div className="absolute -right-4 -bottom-4 opacity-0 group-hover:opacity-[0.06] transition-opacity duration-500">
+        <Icon className="w-28 h-28" style={{ color: accentColor }} />
+      </div>
+    </div>
+  </motion.div>
+);
+
+/* ─── Main Dashboard ─── */
 export default function DashboardPage() {
   const [stats, setStats] = useState<{
     total: number;
@@ -39,21 +148,14 @@ export default function DashboardPage() {
     };
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [chartKey, setChartKey] = useState(0);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await wpLeadsApi.getAll();
 
-      // Simulate some historical data for the area chart since we only have current snapshot
-      const total = data.length;
-
       const statsData = {
-        total: total,
+        total: data.length,
         pending: data.filter((l: any) => l.status === 'pending').length,
         completed: data.filter((l: any) => l.status === 'completed').length,
         remainder: data.filter((l: any) => l.status === 'remainder').length,
@@ -67,13 +169,20 @@ export default function DashboardPage() {
       };
 
       setStats(statsData);
+      // Trigger chart re-animation
+      setChartKey(prev => prev + 1);
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  /* ─── Chart Data ─── */
   const sourceData = stats ? [
     { name: 'Facebook', value: stats.bySource.facebook },
     { name: 'LinkedIn', value: stats.bySource.linkedin },
@@ -82,281 +191,341 @@ export default function DashboardPage() {
     { name: 'Website', value: stats.bySource.website },
   ] : [];
 
-  const statusData = stats ? [
-    { name: 'Pending', value: stats.pending },
-    { name: 'Completed', value: stats.completed },
-    { name: 'Reminder', value: stats.remainder },
+  const pipelineData = stats ? [
+    {
+      name: 'Pending',
+      completed: stats.completed,
+      pending: stats.pending,
+      remainder: stats.remainder,
+    },
+    {
+      name: 'In Progress',
+      completed: Math.round(stats.completed * 0.7),
+      pending: Math.round(stats.pending * 1.2),
+      remainder: Math.round(stats.remainder * 0.5),
+    },
+    {
+      name: 'Qualified',
+      completed: Math.round(stats.completed * 0.4),
+      pending: Math.round(stats.pending * 0.8),
+      remainder: Math.round(stats.remainder * 1.3),
+    },
   ] : [];
 
-  // Custom Active Shape for Pie Chart
-  const onPieEnter = (_: any, index: number) => {
-    setActiveIndex(index);
-  };
-
-  const renderActiveShape = (props: any) => {
-    const RADIAN = Math.PI / 180;
-    const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
-    const sin = Math.sin(-RADIAN * midAngle);
-    const cos = Math.cos(-RADIAN * midAngle);
-    const sx = cx + (outerRadius + 10) * cos;
-    const sy = cy + (outerRadius + 10) * sin;
-    const mx = cx + (outerRadius + 30) * cos;
-    const my = cy + (outerRadius + 30) * sin;
-    const ex = mx + (cos >= 0 ? 1 : -1) * 22;
-    const ey = my;
-    const textAnchor = cos >= 0 ? 'start' : 'end';
-
-    return (
-      <g>
-        <text x={cx} y={cy} dy={8} textAnchor="middle" fill="#1F86E0" className="text-xl font-bold">
-          {payload.name}
-        </text>
-        <sector
-          cx={cx}
-          cy={cy}
-          innerRadius={innerRadius}
-          outerRadius={outerRadius}
-          startAngle={startAngle}
-          endAngle={endAngle}
-          fill={fill}
-        />
-        <sector
-          cx={cx}
-          cy={cy}
-          startAngle={startAngle}
-          endAngle={endAngle}
-          innerRadius={outerRadius + 6}
-          outerRadius={outerRadius + 10}
-          fill={fill}
-        />
-        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
-        <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
-        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#333">{`PV ${value}`}</text>
-        <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#999">
-          {`(Rate ${(percent * 100).toFixed(2)}%)`}
-        </text>
-      </g>
-    );
-  };
-
+  /* ─── Loading State ─── */
   if (loading) {
     return (
-      <div className="p-8 space-y-8 bg-gray-50/50 min-h-screen">
+      <div className="p-4 md:p-8 space-y-8 min-h-screen" style={{ background: BRAND.bg }}>
         <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
+          <Skeleton className="h-12 w-12 rounded-full" style={{ background: BRAND.cardBg }} />
           <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
+            <Skeleton className="h-4 w-[250px]" style={{ background: BRAND.cardBg }} />
+            <Skeleton className="h-4 w-[200px]" style={{ background: BRAND.cardBg }} />
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-40 w-full rounded-2xl" style={{ background: BRAND.cardBg }} />
           ))}
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-[400px] w-full rounded-2xl" />
-          <Skeleton className="h-[400px] w-full rounded-2xl" />
+        <div className="grid gap-4 md:gap-6 md:grid-cols-2">
+          <Skeleton className="h-[380px] w-full rounded-2xl" style={{ background: BRAND.cardBg }} />
+          <Skeleton className="h-[380px] w-full rounded-2xl" style={{ background: BRAND.cardBg }} />
         </div>
       </div>
-    )
+    );
   }
-
-  const StatCard = ({ title, value, icon: Icon, color, subtitle, trend }: any) => (
-    <CardContainer className="inter-var w-full p-0 h-full">
-      <CardBody className="bg-white relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full h-auto rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all duration-300">
-        <CardItem
-          translateZ="50"
-          className="w-full"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className={cn("p-3 rounded-2xl transition-colors duration-300", `bg-${color}-50 group-hover/card:bg-${color}-100`)}>
-              <Icon className={cn("h-6 w-6", `text-${color}-600`)} style={{ color: color }} />
-            </div>
-            {trend && (
-              <div className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                <ArrowUpRight className="w-3 h-3" />
-                <span>{trend}</span>
-              </div>
-            )}
-          </div>
-        </CardItem>
-        <CardItem
-          translateZ="60"
-          className="mt-4"
-        >
-          <span className="text-4xl font-bold text-gray-900 tracking-tight">{value}</span>
-          <div className="flex items-center text-sm text-muted-foreground mt-2 font-medium">
-            {title}
-          </div>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </CardItem>
-        <div className="absolute -right-6 -bottom-6 opacity-0 group-hover/card:opacity-5 transition-opacity duration-500">
-          <Icon className="w-48 h-48" />
-        </div>
-      </CardBody>
-    </CardContainer>
-  );
 
   return (
     <motion.div
-      variants={container}
+      variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="space-y-8 p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen bg-gray-50/30"
+      className="space-y-6 md:space-y-8 p-4 md:p-8 min-h-screen"
+      style={{ background: BRAND.bg }}
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+      {/* ─── Header ─── */}
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Detailed overview of your marketing performance.</p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: BRAND.white }}>
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm md:text-base" style={{ color: BRAND.textMuted }}>
+            Real-time visibility into your marketing performance
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-blue-600 font-semibold bg-blue-50 px-5 py-2.5 rounded-full border border-blue-100 shadow-sm">
-          <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-          </div>
-          <span>Live Updates</span>
-        </div>
-      </div>
+        <button
+          className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl transition-all duration-300 hover:scale-105"
+          style={{
+            background: BRAND.cardBg,
+            border: `1px solid ${BRAND.cardBorder}`,
+            color: BRAND.textMuted,
+          }}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Services</span>
+        </button>
+      </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      {/* ─── Stats Cards ─── */}
+      <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Leads"
+          title="Leads Acquired"
           value={stats?.total || 0}
           icon={Users}
-          color="#1F86E0"
-          subtitle="All time captured"
-          trend="+12% vs last month"
+          accentColor={BRAND.accentCyan}
+          subtitle="All time leads captured"
+          trend="+12%"
+          index={0}
         />
         <StatCard
-          title="Pending Actions"
-          value={stats?.pending || 0}
-          icon={Clock}
-          color="#F59E0B"
-          subtitle="Awaiting response"
-          trend="High Priority"
-        />
-        <StatCard
-          title="Completed Deals"
+          title="Deals Closed"
           value={stats?.completed || 0}
           icon={CheckCircle}
-          color="#10B981"
-          subtitle="Successfully closed"
-          trend="+5% vs last month"
+          accentColor={BRAND.primary}
+          subtitle="Successfully converted"
+          trend="+5%"
+          index={1}
         />
         <StatCard
-          title="Needs Attention"
-          value={stats?.remainder || 0}
-          icon={AlertCircle}
-          color="#EF4444"
-          subtitle="Overdue follow-ups"
-          trend="Action Required"
+          title="Conversion Rate"
+          value={stats?.total ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
+          icon={Activity}
+          accentColor={BRAND.accentCyan}
+          subtitle="Deals closed ratio"
+          index={2}
+        />
+        <StatCard
+          title="Pipeline Value"
+          value={stats?.pending || 0}
+          icon={Clock}
+          accentColor={BRAND.primary}
+          subtitle="Active opportunities"
+          trend="+3%"
+          index={3}
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Lead Sources Area Chart */}
+      {/* ─── Charts Row ─── */}
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2">
+
+        {/* Lead Volume Trend - Area Chart */}
         <motion.div
-          variants={item}
-          className="col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-shadow duration-300"
+          variants={itemVariants}
+          className="rounded-2xl p-5 md:p-8 transition-all duration-300 hover:shadow-2xl"
+          style={{
+            background: BRAND.cardBg,
+            border: `1px solid ${BRAND.cardBorder}`,
+          }}
         >
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Lead Volume Trend</h3>
-              <p className="text-sm text-muted-foreground">Traffic sources over time</p>
+              <h3 className="text-lg font-bold" style={{ color: BRAND.white }}>Lead Volume Trend</h3>
+              <p className="text-xs mt-1" style={{ color: BRAND.textMuted }}>Source distribution over time</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-2xl">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
+            <div
+              className="p-2.5 rounded-xl"
+              style={{ background: `${BRAND.primary}20`, border: `1px solid ${BRAND.primary}30` }}
+            >
+              <TrendingUp className="w-5 h-5" style={{ color: BRAND.primary }} />
             </div>
           </div>
 
-          <div className="h-[350px] w-full">
+          <div className="h-[280px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sourceData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart key={chartKey} data={sourceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1F86E0" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#1F86E0" stopOpacity={0} />
+                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={BRAND.accentCyan} stopOpacity={0.4} />
+                    <stop offset="50%" stopColor={BRAND.primary} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={BRAND.bg} stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="strokeGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={BRAND.accentCyan} />
+                    <stop offset="100%" stopColor={BRAND.primary} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  cursor={{ stroke: '#1F86E0', strokeWidth: 2, strokeDasharray: '5 5' }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BRAND.cardBorder} />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: BRAND.textMuted, fontSize: 11 }}
+                  dy={10}
                 />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: BRAND.textMuted, fontSize: 11 }}
+                />
+                <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#1F86E0"
+                  stroke="url(#strokeGradient)"
                   strokeWidth={3}
                   fillOpacity={1}
-                  fill="url(#colorValue)"
+                  fill="url(#areaGradient)"
+                  isAnimationActive={true}
+                  animationBegin={300}
+                  animationDuration={2000}
+                  animationEasing="ease-out"
+                  dot={{ fill: BRAND.accentCyan, strokeWidth: 2, stroke: BRAND.cardBg, r: 4 }}
+                  activeDot={{ fill: BRAND.accentCyan, strokeWidth: 3, stroke: BRAND.white, r: 6 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
 
-        {/* Lead Status Interactive Pie Chart */}
+        {/* Pipeline Stages - Horizontal Bar Chart */}
         <motion.div
-          variants={item}
-          className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-shadow duration-300 flex flex-col"
+          variants={itemVariants}
+          className="rounded-2xl p-5 md:p-8 transition-all duration-300 hover:shadow-2xl"
+          style={{
+            background: BRAND.cardBg,
+            border: `1px solid ${BRAND.cardBorder}`,
+          }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Pipeline Status</h3>
-              <p className="text-sm text-muted-foreground">Current distribution</p>
+              <h3 className="text-lg font-bold" style={{ color: BRAND.white }}>Pipeline Stages</h3>
+              <p className="text-xs mt-1" style={{ color: BRAND.textMuted }}>Lead distribution by stage</p>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-2xl">
-              <Activity className="w-6 h-6 text-indigo-600" />
+            <div className="flex items-center gap-4 text-xs" style={{ color: BRAND.textMuted }}>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: BRAND.primary }} />
+                Completed
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: BRAND.accentCyan }} />
+                Pending
+              </span>
+              <span className="flex items-center gap-1.5 hidden sm:flex">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#0F4880' }} />
+                Remainder
+              </span>
             </div>
           </div>
 
-          <div className="flex-1 min-h-[300px] w-full relative">
+          <div className="h-[280px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  activeIndex={activeIndex}
-                  activeShape={renderActiveShape}
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={90}
-                  fill="#8884d8"
-                  dataKey="value"
-                  onMouseEnter={onPieEnter}
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={2} stroke="#fff" />
-                  ))}
-                </Pie>
-              </PieChart>
+              <BarChart
+                key={chartKey + 1}
+                data={pipelineData}
+                layout="vertical"
+                margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                barGap={2}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={BRAND.cardBorder} />
+                <XAxis
+                  type="number"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: BRAND.textMuted, fontSize: 11 }}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: BRAND.textMuted, fontSize: 12 }}
+                  width={80}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: `${BRAND.white}05` }} />
+                <Bar
+                  dataKey="completed"
+                  name="Completed"
+                  fill={BRAND.primary}
+                  radius={[0, 6, 6, 0]}
+                  isAnimationActive={true}
+                  animationBegin={400}
+                  animationDuration={1800}
+                  animationEasing="ease-out"
+                  barSize={20}
+                />
+                <Bar
+                  dataKey="pending"
+                  name="Pending"
+                  fill={BRAND.accentCyan}
+                  radius={[0, 6, 6, 0]}
+                  isAnimationActive={true}
+                  animationBegin={600}
+                  animationDuration={1800}
+                  animationEasing="ease-out"
+                  barSize={20}
+                />
+                <Bar
+                  dataKey="remainder"
+                  name="Remainder"
+                  fill="#0F4880"
+                  radius={[0, 6, 6, 0]}
+                  isAnimationActive={true}
+                  animationBegin={800}
+                  animationDuration={1800}
+                  animationEasing="ease-out"
+                  barSize={20}
+                />
+              </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Bottom legend for mobile */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs sm:hidden" style={{ color: BRAND.textMuted }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: BRAND.primary }} />
+              Completed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: BRAND.accentCyan }} />
+              Pending
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#0F4880' }} />
+              Remainder
+            </span>
           </div>
         </motion.div>
       </div>
 
+      {/* ─── CTA Banner ─── */}
       <motion.div
-        variants={item}
-        className="rounded-3xl bg-gradient-to-br from-[#1F86E0] via-[#2563EB] to-[#1E40AF] p-10 text-white relative overflow-hidden shadow-2xl"
+        variants={itemVariants}
+        whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
+        className="rounded-2xl p-6 md:p-10 text-white relative overflow-hidden cursor-pointer"
+        style={{
+          background: `linear-gradient(135deg, ${BRAND.primary} 0%, #2563EB 50%, #1E40AF 100%)`,
+        }}
       >
-        <div className="absolute top-0 right-0 p-12 opacity-10">
-          <TrendingUp className="w-96 h-96 -mr-32 -mt-32 transform rotate-12" />
+        {/* Decorative wave pattern */}
+        <div className="absolute top-0 right-0 bottom-0 w-1/2 opacity-10 pointer-events-none">
+          <svg viewBox="0 0 400 300" fill="none" className="w-full h-full">
+            <path d="M200 0C300 50 350 150 400 300H0C50 200 100 100 200 0Z" fill="white" />
+            <path d="M250 50C320 100 380 200 400 300H100C150 200 180 100 250 50Z" fill="white" fillOpacity="0.5" />
+          </svg>
         </div>
 
-        <div className="relative z-10 max-w-3xl flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
-            <h2 className="text-3xl font-bold mb-4">Unlock Deeper Insights</h2>
-            <p className="text-blue-100 text-lg leading-relaxed max-w-xl">
-              Get a complete history of every interaction, status change, and user activity with our detailed Activity Logs.
-              Track performance metrics and optimize your sales pipeline.
+        <div className="absolute top-4 right-4 md:top-8 md:right-8 opacity-10">
+          <TrendingUp className="w-32 h-32 md:w-48 md:h-48 transform rotate-12" />
+        </div>
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Unlock Deeper Insights</h2>
+            <p className="text-blue-100 text-sm md:text-base leading-relaxed opacity-90">
+              Get a complete history of every interaction, status change, and user activity.
+              Track performance metrics and optimize your sales pipeline effectively.
             </p>
           </div>
-          <button className="whitespace-nowrap bg-white text-blue-600 px-8 py-4 rounded-xl font-bold hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 transform">
-            View Activity Logs
+          <button
+            className="whitespace-nowrap px-6 md:px-8 py-3 md:py-4 rounded-xl font-bold transition-all duration-300 hover:shadow-xl hover:-translate-y-1 transform text-sm md:text-base"
+            style={{
+              background: BRAND.white,
+              color: BRAND.primary,
+              border: `2px solid transparent`,
+            }}
+          >
+            Get Started
           </button>
         </div>
       </motion.div>
