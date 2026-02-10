@@ -199,6 +199,7 @@ export default function DashboardPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartKey, setChartKey] = useState(0);
+  const [showDemoData, setShowDemoData] = useState(true); // Show sample data for 30 seconds
 
   const areaChartRef = useRef<HTMLDivElement>(null);
   const pieChartRef = useRef<HTMLDivElement>(null);
@@ -232,6 +233,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadStats();
+
+    // Timer to switch from demo data to real data after 30 seconds
+    const timer = setTimeout(() => {
+      setShowDemoData(false);
+      setChartKey(prev => prev + 1); // Re-trigger chart animations
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timer);
   }, [loadStats]);
 
   // GSAP Scroll Animations for Charts
@@ -275,17 +284,9 @@ export default function DashboardPage() {
     }
   }, [loading]);
 
-  /* ─── Chart Data with Sample Fallback ─── */
-  // Use sample data for visualization when real data is empty/minimal
-  const hasData = stats && (stats.total > 0);
-
-  const leadVolumeData = hasData ? [
-    { name: 'Mon', Contract: Math.max(stats.bySource.facebook, 15), Payroll: Math.max(stats.bySource.linkedin, 25), Near: Math.max(stats.bySource.form, 10) },
-    { name: 'Tues', Contract: Math.max(stats.bySource.linkedin, 22), Payroll: Math.max(stats.bySource.seo, 30), Near: Math.max(stats.bySource.website, 18) },
-    { name: 'Wed', Contract: Math.max(stats.bySource.form, 28), Payroll: Math.max(stats.bySource.facebook, 35), Near: Math.max(stats.bySource.linkedin, 22) },
-    { name: 'Thurs', Contract: Math.max(stats.bySource.seo, 35), Payroll: Math.max(stats.bySource.website, 42), Near: Math.max(stats.bySource.form, 28) },
-    { name: 'Fri', Contract: Math.max(stats.bySource.website, 40), Payroll: Math.max(stats.bySource.facebook, 48), Near: Math.max(stats.bySource.seo, 35) },
-  ] : [
+  /* ─── Chart Data with Demo Mode ─── */
+  // Show sample data for first 30 seconds, then switch to real data
+  const sampleLeadVolumeData = [
     { name: 'Mon', Contract: 15, Payroll: 25, Near: 10 },
     { name: 'Tues', Contract: 22, Payroll: 30, Near: 18 },
     { name: 'Wed', Contract: 28, Payroll: 35, Near: 22 },
@@ -293,29 +294,47 @@ export default function DashboardPage() {
     { name: 'Fri', Contract: 40, Payroll: 48, Near: 35 },
   ];
 
-  const pipelineDonutData = hasData ? [
-    { name: 'Contract', value: Math.max(stats.completed, 45) },
-    { name: 'Payroll', value: Math.max(stats.pending, 35) },
-    { name: 'Personal', value: Math.max(stats.remainder, 20) },
-  ] : [
+  const samplePipelineDonutData = [
     { name: 'Contract', value: 45 },
     { name: 'Payroll', value: 35 },
     { name: 'Personal', value: 20 },
   ];
 
-  const pipelineBarData = hasData ? [
-    { name: 'New', value: Math.max(stats.pending, 25) },
-    { name: 'Qualified', value: Math.max(Math.round(stats.pending * 0.7), 18) },
-    { name: 'Prioritized', value: Math.max(stats.completed, 32) },
-    { name: 'Proposed', value: Math.max(Math.round(stats.remainder * 0.8), 22) },
-    { name: 'Won', value: Math.max(Math.round(stats.completed * 0.6), 28) },
-  ] : [
+  const samplePipelineBarData = [
     { name: 'New', value: 25 },
     { name: 'Qualified', value: 18 },
     { name: 'Prioritized', value: 32 },
     { name: 'Proposed', value: 22 },
     { name: 'Won', value: 28 },
   ];
+
+  // Real data from backend
+  const realLeadVolumeData = stats ? [
+    { name: 'Mon', Contract: stats.bySource.facebook, Payroll: stats.bySource.linkedin, Near: stats.bySource.form },
+    { name: 'Tues', Contract: stats.bySource.linkedin, Payroll: stats.bySource.seo, Near: stats.bySource.website },
+    { name: 'Wed', Contract: stats.bySource.form, Payroll: stats.bySource.facebook, Near: stats.bySource.linkedin },
+    { name: 'Thurs', Contract: stats.bySource.seo, Payroll: stats.bySource.website, Near: stats.bySource.form },
+    { name: 'Fri', Contract: stats.bySource.website, Payroll: stats.bySource.facebook, Near: stats.bySource.seo },
+  ] : [];
+
+  const realPipelineDonutData = stats ? [
+    { name: 'Contract', value: stats.completed },
+    { name: 'Payroll', value: stats.pending },
+    { name: 'Personal', value: stats.remainder },
+  ] : [];
+
+  const realPipelineBarData = stats ? [
+    { name: 'New', value: stats.pending },
+    { name: 'Qualified', value: Math.round(stats.pending * 0.7) },
+    { name: 'Prioritized', value: stats.completed },
+    { name: 'Proposed', value: Math.round(stats.remainder * 0.8) },
+    { name: 'Won', value: Math.round(stats.completed * 0.6) },
+  ] : [];
+
+  // Use demo data for first 30 seconds, then switch to real data
+  const leadVolumeData = showDemoData ? sampleLeadVolumeData : realLeadVolumeData;
+  const pipelineDonutData = showDemoData ? samplePipelineDonutData : realPipelineDonutData;
+  const pipelineBarData = showDemoData ? samplePipelineBarData : realPipelineBarData;
 
   // Mini chart data for stat cards
   const miniChartData1 = [12, 19, 15, 25, 22, 30, 28];
