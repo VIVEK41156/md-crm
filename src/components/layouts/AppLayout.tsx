@@ -9,7 +9,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="hidden md:block shrink-0">
+      <aside className="hidden md:block shrink-0 w-72">
         <AppSidebar />
       </aside>
       <div className="flex-1 flex flex-col">
