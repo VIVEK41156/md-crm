@@ -15,7 +15,6 @@ import {
   BookOpen,
   Globe,
   ChevronDown,
-  LogOut,
   ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
