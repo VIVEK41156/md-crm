@@ -10,40 +10,40 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --radius: 0.5rem;
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    --background: 0 0% 100%;
+    --foreground: 219 14% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 219 14% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
-    --primary: 217 91% 45%;
+    --popover-foreground: 219 14% 20%;
+    --primary: 208 76% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 160 65% 42%;
     --secondary-foreground: 0 0% 100%;
     --muted: 210 20% 95%;
     --muted-foreground: 215 15% 45%;
     --accent: 210 25% 92%;
-    --accent-foreground: 215 25% 15%;
+    --accent-foreground: 219 14% 20%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 215 20% 88%;
     --input: 215 20% 88%;
-    --ring: 217 91% 45%;
+    --ring: 208 76% 50%;
     --success: 160 65% 42%;
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
-    --chart-1: 217 91% 45%;
+    --chart-1: 208 76% 50%;
     --chart-2: 160 65% 42%;
     --chart-3: 38 92% 50%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 217 91% 45%;
+    --sidebar-background: 208 76% 50%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 217 91% 45%;
-    --sidebar-accent: 217 91% 38%;
+    --sidebar-primary-foreground: 208 76% 50%;
+    --sidebar-accent: 208 76% 40%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 91% 38%;
+    --sidebar-border: 208 76% 40%;
     --sidebar-ring: 0 0% 100%;
   }
 
