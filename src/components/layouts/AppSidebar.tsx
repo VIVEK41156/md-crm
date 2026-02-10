@@ -16,6 +16,7 @@ import {
   Globe,
   ChevronDown,
   LogOut,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,13 +57,14 @@ export function AppSidebar() {
   return (
     <div className="flex h-full w-72 flex-col bg-gradient-to-b from-[#1F86E0] to-[#0A4F8B] text-white shadow-2xl relative overflow-hidden">
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
         <Globe className="w-64 h-64 -mr-24 -mt-24 rotate-12" />
       </div>
 
-      <div className="flex h-20 items-center justify-between px-6 z-10">
+      {/* Header */}
+      <div className="flex h-20 items-center justify-between px-6 z-10 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/20 shadow-inner">
+          <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md border border-white/20 shadow-lg">
             <LayoutDashboard className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -74,18 +76,18 @@ export function AppSidebar() {
 
       {/* Site Switcher */}
       {accessibleSites.length > 0 && (
-        <div className="px-6 py-4 z-10">
+        <div className="px-4 py-3 z-10 flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-between bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm h-12 rounded-xl transition-all duration-300 group"
+                className="w-full justify-between bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-12 rounded-xl transition-all duration-300 group shadow-lg"
               >
-                <span className="flex items-center gap-3 truncate">
+                <span className="flex items-center gap-2.5 truncate">
                   <div className="p-1.5 bg-white/20 rounded-lg group-hover:bg-white/30 transition-colors">
                     <Globe className="h-4 w-4 flex-shrink-0" />
                   </div>
-                  <span className="truncate font-medium">{currentSite?.name || 'Select Site'}</span>
+                  <span className="truncate font-medium text-sm">{currentSite?.name || 'Select Site'}</span>
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-70" />
               </Button>
@@ -111,6 +113,7 @@ export function AppSidebar() {
         </div>
       )}
 
+      {/* Navigation */}
       <ScrollArea className="flex-1 px-4 py-2 z-10">
         <nav className="space-y-1.5">
           <AnimatePresence>
@@ -126,28 +129,30 @@ export function AppSidebar() {
                   <Link to={item.href}>
                     <div
                       className={cn(
-                        'relative flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 group overflow-hidden',
+                        'relative flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 group overflow-hidden',
                         isActive
-                          ? 'text-[#1F86E0] bg-white shadow-lg shadow-black/5 font-semibold'
-                          : 'text-blue-50 hover:bg-white/10 hover:text-white'
+                          ? 'text-[#1F86E0] bg-white shadow-lg shadow-black/10 font-semibold scale-[1.02]'
+                          : 'text-white/90 hover:bg-white/10 hover:text-white border border-transparent hover:border-white/20'
                       )}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="activeTab"
                           className="absolute inset-0 bg-white rounded-xl z-0"
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          transition={{ type: "spring", stiffness: 380, damping: 35 }}
                         />
                       )}
 
                       <item.icon className={cn(
-                        "mr-3 h-5 w-5 relative z-10 transition-colors duration-200",
-                        isActive ? "text-[#1F86E0]" : "opacity-80 group-hover:opacity-100"
+                        "mr-3 h-5 w-5 relative z-10 transition-transform duration-300 group-hover:scale-110",
+                        isActive ? "text-[#1F86E0]" : "opacity-90"
                       )} />
-                      <span className="relative z-10">{item.name}</span>
+                      <span className="relative z-10 text-sm">{item.name}</span>
 
                       {!isActive && (
-                        <ChevronDown className="ml-auto h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-50 group-hover:translate-x-0 transition-all duration-200 -rotate-90" />
+                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                        </div>
                       )}
                     </div>
                   </Link>
@@ -158,27 +163,30 @@ export function AppSidebar() {
         </nav>
       </ScrollArea>
 
-      <div className="p-6 mt-auto z-10">
+      {/* Sign Out Button */}
+      <div className="px-4 pb-4 z-10 flex-shrink-0">
         <Button
           variant="ghost"
           onClick={() => signOut()}
-          className="w-full justify-start text-blue-100 hover:text-white hover:bg-white/10 h-11 rounded-xl gap-3 pl-4 transition-all"
+          className="w-full justify-start text-white/90 hover:text-white hover:bg-white/10 h-11 rounded-xl gap-3 pl-4 transition-all border border-transparent hover:border-white/20"
         >
-          <LogOut className="h-5 w-5 opacity-70" />
-          <span>Sign Out</span>
+          <ArrowRight className="h-5 w-5 opacity-70" />
+          <span className="text-sm">Sign Out</span>
         </Button>
+      </div>
 
-        <div className="mt-6 flex items-center gap-3 px-2 pt-4 border-t border-white/10">
-          <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold border border-white/30">
-            {profile?.username?.charAt(0).toUpperCase() || 'U'}
+      {/* User Profile */}
+      <div className="px-4 pb-6 z-10 flex-shrink-0">
+        <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+          <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold border-2 border-white/30 shadow-inner">
+            {profile?.username?.charAt(0).toUpperCase() || 'A'}
           </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-medium truncate">{profile?.username || 'User'}</span>
-            <span className="text-[10px] text-blue-200 uppercase tracking-wider">{profile?.role || 'Role'}</span>
+          <div className="flex flex-col overflow-hidden flex-1">
+            <span className="text-sm font-semibold truncate">{profile?.username || 'admin'}</span>
+            <span className="text-[10px] text-blue-100 uppercase tracking-wider font-medium">{profile?.role || 'ADMIN'}</span>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
