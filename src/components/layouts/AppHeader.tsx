@@ -12,6 +12,13 @@ type Profile = {
   created_at: string;
   updated_at: string;
 };
+
+interface AppHeaderProps {
+  isSidebarOpen?: boolean;
+  toggleSidebar?: () => void;
+  isMobile?: boolean;
+}
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +29,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, Menu } from 'lucide-react';
+import { LogOut, User, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './AppSidebar';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function AppHeader() {
+export function AppHeader({ isSidebarOpen = true, toggleSidebar, isMobile = false }: AppHeaderProps) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -51,23 +60,53 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4 md:px-6">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden mr-2">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <AppSidebar />
-          </SheetContent>
-        </Sheet>
+      <div className="flex h-16 items-center px-4 md:px-6 gap-4">
+        {/* Mobile Sidebar (Sheet) */}
+        <div className="md:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="-ml-2">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72 border-r-0">
+              <AppSidebar />
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {/* Desktop Sidebar Toggle */}
+        {!isMobile && toggleSidebar && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className="hidden md:flex text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  {isSidebarOpen ? (
+                    <PanelLeftClose className="h-5 w-5" />
+                  ) : (
+                    <PanelLeftOpen className="h-5 w-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {/* Breadcrumbs or Page Title could go here */}
 
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
           <NotificationCenter />
-          
+
           {profile && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -106,6 +145,3 @@ export function AppHeader() {
   );
 }
 
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
