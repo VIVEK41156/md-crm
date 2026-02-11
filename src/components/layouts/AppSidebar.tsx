@@ -16,9 +16,8 @@ import {
   Globe,
   ChevronDown,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  LogOut
+  LogOut,
+  PanelLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -73,46 +72,55 @@ export function AppSidebar({ isCollapsed = false, toggleSidebar }: AppSidebarPro
       isCollapsed ? "w-[80px]" : "w-72"
     )}>
 
-      {/* Toggle Button - Right Edge (Desktop Only) */}
-      {toggleSidebar && (
-        <button
-          onClick={toggleSidebar}
-          className="absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-[#0A4F8B] text-white shadow-md hover:bg-[#1a5f9a] transition-colors focus:outline-none"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
-        </button>
-      )}
-
-      {/* Decorative Background Elements */}
-      {!isCollapsed && (
-        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-          <Globe className="w-64 h-64 -mr-24 -mt-24 rotate-12" />
-        </div>
-      )}
-
       {/* Header */}
       <div className={cn(
         "flex h-20 items-center z-10 flex-shrink-0 transition-all duration-300",
-        isCollapsed ? "justify-center px-0" : "justify-between px-6"
+        isCollapsed ? "justify-center px-2" : "justify-between px-6"
       )}>
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
-            <LayoutDashboard className="h-6 w-6 text-white" />
-          </div>
-          {!isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="overflow-hidden whitespace-nowrap"
+        <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center w-full" : "")}>
+          {/* Logo / Home */}
+          {!isCollapsed ? (
+            <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
+              <LayoutDashboard className="h-6 w-6 text-white" />
+            </div>
+          ) : (
+            // In collapsed mode, the toggle button acts as the header interaction or we show a simplified logo that acts as toggle?
+            // User asked for toggle icon in empty space (Open state).
+            // For collapsed state, we often toggle via this button too.
+            // Let's show the Toggle Icon ONLY when collapsed? Or both?
+            // If I replace logo with toggle when collapsed, it works well.
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="text-white hover:bg-white/10"
             >
-              <h1 className="text-lg font-bold tracking-tight text-white leading-none">Marketing</h1>
-              <span className="text-xs text-blue-100 font-medium">Dashboard</span>
-            </motion.div>
+              <PanelLeft className="h-6 w-6" />
+            </Button>
+          )}
+
+          {!isCollapsed && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="overflow-hidden whitespace-nowrap"
+              >
+                <h1 className="text-lg font-bold tracking-tight text-white leading-none">Marketing</h1>
+                <span className="text-xs text-blue-100 font-medium">Dashboard</span>
+              </motion.div>
+
+              {/* Toggle Button (Open State) */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                className="text-white/70 hover:text-white hover:bg-white/10 ml-auto"
+              >
+                <PanelLeft className="h-5 w-5" />
+              </Button>
+            </>
           )}
         </div>
       </div>
