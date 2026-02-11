@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSite } from '@/contexts/SiteContext';
 import { cn } from '@/lib/utils';
-import type { UserRole } from '@/types/types';
+import type { UserRole, Profile } from '../../types/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
@@ -16,6 +16,9 @@ import {
   Globe,
   ChevronDown,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,6 +28,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['super_admin', 'admin', 'sales_manager', 'sales_person', 'seo_manager', 'seo_person', 'client'] as UserRole[] },
@@ -39,42 +48,77 @@ const navigation = [
   { name: 'Activity Logs', href: '/activity', icon: FileText, roles: ['super_admin', 'admin', 'sales_manager', 'seo_manager'] as UserRole[] },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  isCollapsed?: boolean;
+  toggleSidebar?: () => void;
+}
+
+export function AppSidebar({ isCollapsed = false, toggleSidebar }: AppSidebarProps) {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const { currentSite, setCurrentSite, getAccessibleSites } = useSite();
 
   // Get sites based on user role
   const accessibleSites = profile
-    ? getAccessibleSites(String(profile.id), profile.role)
+    ? getAccessibleSites((profile as Profile).id, (profile as Profile).role)
     : [];
 
   const filteredNavigation = navigation.filter(item =>
-    profile && item.roles.includes(profile.role as UserRole)
+    profile && item.roles.includes((profile as Profile).role as UserRole)
   );
 
   return (
-    <div className="flex h-full w-72 flex-col bg-gradient-to-b from-[#1F86E0] to-[#0A4F8B] text-white shadow-2xl relative overflow-hidden">
+    <div className={cn(
+      "flex h-full flex-col bg-gradient-to-b from-[#1F86E0] to-[#0A4F8B] text-white shadow-2xl relative transition-all duration-300",
+      isCollapsed ? "w-[80px]" : "w-72"
+    )}>
+
+      {/* Toggle Button - Right Edge (Desktop Only) */}
+      {toggleSidebar && (
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-[#0A4F8B] text-white shadow-md hover:bg-[#1a5f9a] transition-colors focus:outline-none"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
+      )}
+
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-        <Globe className="w-64 h-64 -mr-24 -mt-24 rotate-12" />
-      </div>
+      {!isCollapsed && (
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+          <Globe className="w-64 h-64 -mr-24 -mt-24 rotate-12" />
+        </div>
+      )}
 
       {/* Header */}
-      <div className="flex h-20 items-center justify-between px-6 z-10 flex-shrink-0">
+      <div className={cn(
+        "flex h-20 items-center z-10 flex-shrink-0 transition-all duration-300",
+        isCollapsed ? "justify-center px-0" : "justify-between px-6"
+      )}>
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md border border-white/20 shadow-lg">
+          <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
             <LayoutDashboard className="h-6 w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-white leading-none">Marketing</h1>
-            <span className="text-xs text-blue-100 font-medium">Dashboard</span>
-          </div>
+          {!isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              <h1 className="text-lg font-bold tracking-tight text-white leading-none">Marketing</h1>
+              <span className="text-xs text-blue-100 font-medium">Dashboard</span>
+            </motion.div>
+          )}
         </div>
       </div>
 
       {/* Site Switcher */}
-      {accessibleSites.length > 0 && (
+      {accessibleSites.length > 0 && !isCollapsed && (
         <div className="px-4 py-3 z-10 flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -115,75 +159,121 @@ export function AppSidebar() {
       {/* Navigation */}
       <ScrollArea className="flex-1 px-4 py-2 z-10">
         <nav className="space-y-1.5">
-          <AnimatePresence>
-            {filteredNavigation.map((item, index) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Link to={item.href}>
-                    <div
-                      className={cn(
-                        'relative flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 group overflow-hidden',
-                        isActive
-                          ? 'text-[#1F86E0] bg-white shadow-lg shadow-black/10 font-semibold scale-[1.02]'
-                          : 'text-white/90 hover:bg-white/10 hover:text-white border border-transparent hover:border-white/20'
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="absolute inset-0 bg-white rounded-xl z-0"
-                          transition={{ type: "spring", stiffness: 380, damping: 35 }}
-                        />
-                      )}
+          <TooltipProvider delayDuration={0}>
+            <AnimatePresence>
+              {filteredNavigation.map((item, index) => {
+                const isActive = location.pathname === item.href;
+                const content = (
+                  <motion.div
+                    key={item.name}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Link to={item.href}>
+                      <div
+                        className={cn(
+                          'relative flex items-center rounded-xl transition-all duration-300 group overflow-hidden',
+                          isActive
+                            ? 'text-[#1F86E0] bg-white shadow-lg shadow-black/10 font-semibold scale-[1.02]'
+                            : 'text-white/90 hover:bg-white/10 hover:text-white border border-transparent hover:border-white/20',
+                          isCollapsed ? "justify-center px-2 py-3" : "px-4 py-3.5"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute inset-0 bg-white rounded-xl z-0"
+                            transition={{ type: "spring", stiffness: 380, damping: 35 }}
+                          />
+                        )}
 
-                      <item.icon className={cn(
-                        "mr-3 h-5 w-5 relative z-10 transition-transform duration-300 group-hover:scale-110",
-                        isActive ? "text-[#1F86E0]" : "opacity-90"
-                      )} />
-                      <span className="relative z-10 text-sm">{item.name}</span>
+                        <item.icon className={cn(
+                          "relative z-10 transition-transform duration-300 group-hover:scale-110",
+                          isActive ? "text-[#1F86E0]" : "opacity-90",
+                          isCollapsed ? "h-6 w-6" : "mr-3 h-5 w-5"
+                        )} />
 
-                      {!isActive && (
-                        <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                        {!isCollapsed && (
+                          <span className="relative z-10 text-sm whitespace-nowrap">{item.name}</span>
+                        )}
+
+                        {!isActive && !isCollapsed && (
+                          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  </motion.div>
+                )
+
+                if (isCollapsed) {
+                  return (
+                    <Tooltip key={item.name}>
+                      <TooltipTrigger asChild>
+                        {content}
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="ml-2 font-medium">
+                        {item.name}
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                }
+
+                return content;
+              })}
+            </AnimatePresence>
+          </TooltipProvider>
         </nav>
       </ScrollArea>
 
       {/* Sign Out Button */}
-      <div className="px-4 pb-4 z-10 flex-shrink-0">
-        <Button
-          variant="ghost"
-          onClick={() => signOut()}
-          className="w-full justify-start text-white/90 hover:text-white hover:bg-white/10 h-11 rounded-xl gap-3 pl-4 transition-all border border-transparent hover:border-white/20"
-        >
-          <ArrowRight className="h-5 w-5 opacity-70" />
-          <span className="text-sm">Sign Out</span>
-        </Button>
+      <div className={cn("z-10 flex-shrink-0", isCollapsed ? "px-2 pb-4" : "px-4 pb-4")}>
+        {isCollapsed ? (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  onClick={() => signOut()}
+                  className="w-full justify-center text-white/90 hover:text-white hover:bg-white/10 h-11 rounded-xl transition-all border border-transparent hover:border-white/20"
+                >
+                  <LogOut className="h-5 w-5 opacity-70" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="ml-2 font-medium">Sign Out</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <Button
+            variant="ghost"
+            onClick={() => signOut()}
+            className="w-full justify-start text-white/90 hover:text-white hover:bg-white/10 h-11 rounded-xl gap-3 pl-4 transition-all border border-transparent hover:border-white/20"
+          >
+            <ArrowRight className="h-5 w-5 opacity-70" />
+            <span className="text-sm">Sign Out</span>
+          </Button>
+        )}
       </div>
 
       {/* User Profile */}
-      <div className="px-4 pb-6 z-10 flex-shrink-0">
-        <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-          <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold border-2 border-white/30 shadow-inner">
-            {profile?.username?.charAt(0).toUpperCase() || 'A'}
-          </div>
-          <div className="flex flex-col overflow-hidden flex-1">
-            <span className="text-sm font-semibold truncate">{profile?.username || 'admin'}</span>
-            <span className="text-[10px] text-blue-100 uppercase tracking-wider font-medium">{profile?.role || 'ADMIN'}</span>
-          </div>
+      <div className={cn("z-10 flex-shrink-0 px-4 pb-6", isCollapsed && "px-2")}>
+        <div className={cn(
+          "flex items-center rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 transition-all duration-300",
+          isCollapsed ? "justify-center p-2" : "gap-3 px-3 py-3"
+        )}>
+          <Link to="/profile">
+            <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold border-2 border-white/30 shadow-inner shrink-0 cursor-pointer hover:scale-105 transition-transform">
+              {(profile as Profile)?.username?.charAt(0).toUpperCase() || 'A'}
+            </div>
+          </Link>
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden flex-1">
+              <span className="text-sm font-semibold truncate">{(profile as Profile)?.username || 'admin'}</span>
+              <span className="text-[10px] text-blue-100 uppercase tracking-wider font-medium">{(profile as Profile)?.role || 'ADMIN'}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

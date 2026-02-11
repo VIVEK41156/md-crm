@@ -13,11 +13,6 @@ type Profile = {
   updated_at: string;
 };
 
-interface AppHeaderProps {
-  isSidebarOpen?: boolean;
-  toggleSidebar?: () => void;
-  isMobile?: boolean;
-}
 
 import {
   DropdownMenu,
@@ -29,12 +24,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LogOut, User, Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './AppSidebar';
 import { cn } from '@/lib/utils';
 
-export function AppHeader({ isSidebarOpen = true, toggleSidebar, isMobile = false }: AppHeaderProps) {
+export function AppHeader() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -74,22 +69,7 @@ export function AppHeader({ isSidebarOpen = true, toggleSidebar, isMobile = fals
           </Sheet>
         </div>
 
-        {/* Desktop Sidebar Toggle */}
-        {!isMobile && toggleSidebar && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="text-muted-foreground hover:text-foreground mr-2"
-          >
-            {isSidebarOpen ? (
-              <PanelLeftClose className="h-5 w-5" />
-            ) : (
-              <PanelLeftOpen className="h-5 w-5" />
-            )}
-            <span className="sr-only">Toggle Sidebar</span>
-          </Button>
-        )}
+        {/* Desktop Sidebar Toggle - MOVED TO SIDEBAR EDGE */}
 
         {/* Breadcrumbs or Page Title could go here */}
 
