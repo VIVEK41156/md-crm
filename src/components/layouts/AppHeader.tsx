@@ -33,7 +33,6 @@ import { LogOut, User, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './AppSidebar';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function AppHeader({ isSidebarOpen = true, toggleSidebar, isMobile = false }: AppHeaderProps) {
   const { profile, signOut } = useAuth();
@@ -77,27 +76,19 @@ export function AppHeader({ isSidebarOpen = true, toggleSidebar, isMobile = fals
 
         {/* Desktop Sidebar Toggle */}
         {!isMobile && toggleSidebar && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleSidebar}
-                  className="hidden md:flex text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  {isSidebarOpen ? (
-                    <PanelLeftClose className="h-5 w-5" />
-                  ) : (
-                    <PanelLeftOpen className="h-5 w-5" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>{isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="text-muted-foreground hover:text-foreground mr-2"
+          >
+            {isSidebarOpen ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle Sidebar</span>
+          </Button>
         )}
 
         {/* Breadcrumbs or Page Title could go here */}
